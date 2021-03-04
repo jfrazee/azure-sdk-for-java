@@ -21,7 +21,6 @@ import java.util.Map;
  * @see SessionErrorContext
  * @see LinkErrorContext
  */
-@Fluent
 public class AmqpErrorContext implements Serializable {
     static final String MESSAGE_PARAMETER_DELIMITER = ", ";
 
