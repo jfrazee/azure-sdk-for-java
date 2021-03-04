@@ -6,9 +6,10 @@ package com.azure.core.amqp.implementation.handler;
 import com.azure.core.amqp.AmqpRetryOptions;
 import com.azure.core.amqp.AmqpTransportType;
 import com.azure.core.amqp.ProxyOptions;
-import com.azure.core.amqp.models.CbsAuthorizationType;
 import com.azure.core.amqp.implementation.ClientConstants;
 import com.azure.core.amqp.implementation.ConnectionOptions;
+import com.azure.core.amqp.models.CbsAuthorizationType;
+import com.azure.core.amqp.models.SslVerifyMode;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.util.ClientOptions;
 import org.apache.qpid.proton.amqp.Symbol;
@@ -47,9 +48,7 @@ public class WebSocketsConnectionHandlerTest {
     private static final String CONNECTION_ID = "some-random-id";
     private static final String HOSTNAME = "hostname-random";
 
-    private static final String PRODUCT = "test";
-    private static final String CLIENT_VERSION = "1.0.0-test";
-    private static final SslDomain.VerifyMode VERIFY_MODE = SslDomain.VerifyMode.VERIFY_PEER_NAME;
+    private static final SslVerifyMode VERIFY_MODE = SslVerifyMode.VERIFY_PEER_NAME;
 
     private WebSocketsConnectionHandler handler;
     private ConnectionOptions connectionOptions;
@@ -68,7 +67,7 @@ public class WebSocketsConnectionHandlerTest {
         this.connectionOptions = new ConnectionOptions(HOSTNAME, tokenCredential,
             CbsAuthorizationType.SHARED_ACCESS_SIGNATURE, AmqpTransportType.AMQP_WEB_SOCKETS, new AmqpRetryOptions(),
             ProxyOptions.SYSTEM_DEFAULTS, scheduler, CLIENT_OPTIONS, VERIFY_MODE);
-        this.handler = new WebSocketsConnectionHandler(CONNECTION_ID, PRODUCT, CLIENT_VERSION, connectionOptions);
+        this.handler = new WebSocketsConnectionHandler(CONNECTION_ID, connectionOptions);
     }
 
     @AfterEach
@@ -178,8 +177,7 @@ public class WebSocketsConnectionHandlerTest {
             CbsAuthorizationType.SHARED_ACCESS_SIGNATURE, AmqpTransportType.AMQP_WEB_SOCKETS, new AmqpRetryOptions(),
             ProxyOptions.SYSTEM_DEFAULTS, scheduler, CLIENT_OPTIONS, VERIFY_MODE, customEndpoint, port);
 
-        try (WebSocketsConnectionHandler handler = new WebSocketsConnectionHandler(CONNECTION_ID, PRODUCT,
-            CLIENT_VERSION, connectionOptions)) {
+        try (WebSocketsConnectionHandler handler = new WebSocketsConnectionHandler(CONNECTION_ID, connectionOptions)) {
 
             // Act
             handler.onConnectionInit(event);

@@ -6,11 +6,13 @@ package com.azure.core.amqp.implementation.handler;
 import com.azure.core.amqp.AmqpRetryOptions;
 import com.azure.core.amqp.AmqpTransportType;
 import com.azure.core.amqp.ProxyOptions;
-import com.azure.core.amqp.models.CbsAuthorizationType;
 import com.azure.core.amqp.implementation.ClientConstants;
 import com.azure.core.amqp.implementation.ConnectionOptions;
+import com.azure.core.amqp.models.CbsAuthorizationType;
+import com.azure.core.amqp.models.SslVerifyMode;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.util.ClientOptions;
+import com.azure.core.util.Header;
 import com.azure.core.util.UserAgentUtil;
 import org.apache.qpid.proton.amqp.Symbol;
 import org.apache.qpid.proton.engine.Connection;
@@ -30,7 +32,9 @@ import org.mockito.MockitoAnnotations;
 import reactor.core.scheduler.Scheduler;
 import reactor.test.StepVerifier;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.azure.core.amqp.implementation.handler.ConnectionHandler.AMQPS_PORT;
@@ -49,12 +53,19 @@ import static org.mockito.Mockito.when;
 
 public class ConnectionHandlerTest {
     private static final String APPLICATION_ID = "some-random-app-id";
-    private static final ClientOptions CLIENT_OPTIONS = new ClientOptions().setApplicationId(APPLICATION_ID);
     private static final String CONNECTION_ID = "some-random-id";
     private static final String HOSTNAME = "hostname-random";
     private static final String PRODUCT = "test";
     private static final String CLIENT_VERSION = "1.0.0-test";
-    private static final SslDomain.VerifyMode VERIFY_MODE = SslDomain.VerifyMode.VERIFY_PEER_NAME;
+    private static final List<Header> HEADER_LIST = Arrays.asList(
+        new Header("name", PRODUCT),
+        new Header("version", CLIENT_VERSION),
+        new Header("foo-bar", "some-values"));
+    private static final ClientOptions CLIENT_OPTIONS = new ClientOptions()
+        .setApplicationId(APPLICATION_ID)
+        .setHeaders(HEADER_LIST);
+
+    private static final SslVerifyMode VERIFY_MODE = SslVerifyMode.VERIFY_PEER;
 
     @Captor
     private ArgumentCaptor<Map<Symbol, Object>> argumentCaptor;
@@ -73,7 +84,7 @@ public class ConnectionHandlerTest {
         this.connectionOptions = new ConnectionOptions(HOSTNAME, tokenCredential,
             CbsAuthorizationType.SHARED_ACCESS_SIGNATURE, AmqpTransportType.AMQP, new AmqpRetryOptions(),
             ProxyOptions.SYSTEM_DEFAULTS, scheduler, CLIENT_OPTIONS, VERIFY_MODE);
-        this.handler = new ConnectionHandler(CONNECTION_ID, PRODUCT, CLIENT_VERSION, connectionOptions);
+        this.handler = new ConnectionHandler(CONNECTION_ID, connectionOptions);
     }
 
     @AfterEach
@@ -88,27 +99,22 @@ public class ConnectionHandlerTest {
 
     @Test
     void constructorNull() {
-        assertThrows(NullPointerException.class, () -> new ConnectionHandler(null, PRODUCT,
-            CLIENT_VERSION, connectionOptions));
-        assertThrows(NullPointerException.class, () -> new ConnectionHandler(CONNECTION_ID, null,
-            CLIENT_VERSION, connectionOptions));
-        assertThrows(NullPointerException.class, () -> new ConnectionHandler(CONNECTION_ID, PRODUCT,
-            null, connectionOptions));
-        assertThrows(NullPointerException.class, () -> new ConnectionHandler(CONNECTION_ID, PRODUCT,
-            CLIENT_VERSION, null));
+        assertThrows(NullPointerException.class, () -> new ConnectionHandler(null, connectionOptions));
+        assertThrows(NullPointerException.class, () -> new ConnectionHandler(CONNECTION_ID, null));
     }
 
     @Test
     void applicationIdNotSet() {
         // Arrange
-        final ClientOptions clientOptions = new ClientOptions();
+        final ClientOptions clientOptions = new ClientOptions()
+            .setHeaders(HEADER_LIST);
         final String expected = UserAgentUtil.toUserAgentString(null, PRODUCT, CLIENT_VERSION, null);
         final ConnectionOptions options = new ConnectionOptions(HOSTNAME, tokenCredential,
             CbsAuthorizationType.SHARED_ACCESS_SIGNATURE, AmqpTransportType.AMQP, new AmqpRetryOptions(),
             ProxyOptions.SYSTEM_DEFAULTS, scheduler, clientOptions, VERIFY_MODE);
 
         // Act
-        final ConnectionHandler handler = new ConnectionHandler(CONNECTION_ID, PRODUCT, CLIENT_VERSION, options);
+        final ConnectionHandler handler = new ConnectionHandler(CONNECTION_ID, options);
 
         // Assert
         final String userAgent = (String) handler.getConnectionProperties().get(USER_AGENT.toString());
@@ -122,8 +128,7 @@ public class ConnectionHandlerTest {
             CLIENT_VERSION, null);
 
         // Act
-        final ConnectionHandler handler = new ConnectionHandler(CONNECTION_ID, PRODUCT, CLIENT_VERSION,
-            connectionOptions);
+        final ConnectionHandler handler = new ConnectionHandler(CONNECTION_ID, connectionOptions);
 
         // Assert
         final String userAgent = (String) handler.getConnectionProperties().get(USER_AGENT.toString());

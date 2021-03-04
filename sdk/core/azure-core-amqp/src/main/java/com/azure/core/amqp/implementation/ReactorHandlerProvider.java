@@ -47,15 +47,12 @@ public class ReactorHandlerProvider {
      * @throws NullPointerException If {@code connectionId}, {@code productName}, {@code clientVersion},
      *      {@code options} is {@code null}.
      */
-    public ConnectionHandler createConnectionHandler(String connectionId, String productName, String clientVersion,
-        ConnectionOptions options) {
+    public ConnectionHandler createConnectionHandler(String connectionId, ConnectionOptions options) {
         Objects.requireNonNull(connectionId, "'connectionId' cannot be null.");
         Objects.requireNonNull(options, "'options' cannot be null.");
-        Objects.requireNonNull(productName, "'productName' cannot be null.");
-        Objects.requireNonNull(clientVersion, "'clientVersion' cannot be null.");
 
         if (options.getTransportType() == AmqpTransportType.AMQP) {
-            return new ConnectionHandler(connectionId, productName, clientVersion, options);
+            return new ConnectionHandler(connectionId, options);
         }
 
         if (options.getTransportType() != AmqpTransportType.AMQP_WEB_SOCKETS) {
@@ -81,17 +78,15 @@ public class ReactorHandlerProvider {
             logger.info("Using user configured proxy to connect to: '{}:{}'. Proxy: {}",
                 options.getFullyQualifiedNamespace(), options.getPort(), options.getProxyOptions().getProxyAddress());
 
-            return new WebSocketsProxyConnectionHandler(connectionId, productName, clientVersion, options,
-                options.getProxyOptions());
+            return new WebSocketsProxyConnectionHandler(connectionId, options, options.getProxyOptions());
         } else if (isSystemProxyConfigured) {
             logger.info("System default proxy configured for hostname:port '{}:{}'. Using proxy.",
                 options.getFullyQualifiedNamespace(), options.getPort());
 
-            return new WebSocketsProxyConnectionHandler(connectionId, productName, clientVersion, options,
-                ProxyOptions.SYSTEM_DEFAULTS);
+            return new WebSocketsProxyConnectionHandler(connectionId, options, ProxyOptions.SYSTEM_DEFAULTS);
         }
 
-        return new WebSocketsConnectionHandler(connectionId, productName, clientVersion, options);
+        return new WebSocketsConnectionHandler(connectionId, options);
     }
 
     /**

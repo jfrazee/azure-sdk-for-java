@@ -7,6 +7,7 @@ import com.azure.core.amqp.exception.AmqpErrorContext;
 import com.azure.core.amqp.implementation.ClientConstants;
 import com.azure.core.amqp.implementation.ConnectionOptions;
 import com.azure.core.amqp.implementation.ExceptionUtil;
+import com.azure.core.amqp.models.SslVerifyMode;
 import com.azure.core.util.ClientOptions;
 import com.azure.core.util.CoreUtils;
 import com.azure.core.util.UserAgentUtil;
@@ -51,25 +52,18 @@ public class ConnectionHandler extends Handler {
      * Creates a handler that handles proton-j's connection events.
      *
      * @param connectionId Identifier for this connection.
-     * @param productName The name of the product this connection handler is created for.
-     * @param clientVersion The version of the client library creating the connection handler.
      * @param connectionOptions Options used when creating the AMQP connection.
      */
-    public ConnectionHandler(final String connectionId, final String productName, final String clientVersion,
-        final ConnectionOptions connectionOptions) {
+    public ConnectionHandler(final String connectionId, final ConnectionOptions connectionOptions) {
         super(connectionId,
             Objects.requireNonNull(connectionOptions, "'connectionOptions' cannot be null.").getHostname());
 
         add(new Handshaker());
 
         this.connectionOptions = connectionOptions;
-
-        Objects.requireNonNull(productName, "'product' cannot be null.");
-        Objects.requireNonNull(clientVersion, "'clientVersion' cannot be null.");
-
         this.connectionProperties = new HashMap<>();
-        this.connectionProperties.put(PRODUCT.toString(), productName);
-        this.connectionProperties.put(VERSION.toString(), clientVersion);
+        this.connectionProperties.put(PRODUCT.toString(), connectionOptions.getClientProduct());
+        this.connectionProperties.put(VERSION.toString(), connectionOptions.getClientVersion());
         this.connectionProperties.put(PLATFORM.toString(), ClientConstants.PLATFORM_INFO);
         this.connectionProperties.put(FRAMEWORK.toString(), ClientConstants.FRAMEWORK_INFO);
 
@@ -77,7 +71,9 @@ public class ConnectionHandler extends Handler {
         final String applicationId = !CoreUtils.isNullOrEmpty(clientOptions.getApplicationId())
             ? clientOptions.getApplicationId()
             : null;
-        String userAgent = UserAgentUtil.toUserAgentString(applicationId, productName, clientVersion, null);
+        final String userAgent = UserAgentUtil.toUserAgentString(applicationId, connectionOptions.getClientProduct(),
+            connectionOptions.getClientVersion(), null);
+
         this.connectionProperties.put(USER_AGENT.toString(), userAgent);
     }
 
@@ -118,10 +114,10 @@ public class ConnectionHandler extends Handler {
         final SslDomain sslDomain = Proton.sslDomain();
         sslDomain.init(SslDomain.Mode.CLIENT);
 
-        final SslDomain.VerifyMode verifyMode = connectionOptions.getSslVerifyMode();
+        final SslVerifyMode verifyMode = connectionOptions.getSslVerifyMode();
         final SSLContext defaultSslContext;
 
-        if (verifyMode == SslDomain.VerifyMode.ANONYMOUS_PEER) {
+        if (verifyMode == SslVerifyMode.NONE) {
             defaultSslContext = null;
         } else {
             try {
@@ -132,7 +128,7 @@ public class ConnectionHandler extends Handler {
             }
         }
 
-        if (verifyMode == SslDomain.VerifyMode.VERIFY_PEER_NAME) {
+        if (verifyMode == SslVerifyMode.VERIFY_PEER_NAME) {
             final StrictTlsContextSpi serviceProvider = new StrictTlsContextSpi(defaultSslContext);
             final SSLContext context = new StrictTlsContext(serviceProvider, defaultSslContext.getProvider(),
                 defaultSslContext.getProtocol());
@@ -146,16 +142,17 @@ public class ConnectionHandler extends Handler {
             return;
         }
 
-        if (verifyMode == SslDomain.VerifyMode.VERIFY_PEER) {
+        if (verifyMode == SslVerifyMode.VERIFY_PEER) {
             sslDomain.setSslContext(defaultSslContext);
-        } else if (verifyMode == SslDomain.VerifyMode.ANONYMOUS_PEER) {
+            sslDomain.setPeerAuthentication(SslDomain.VerifyMode.VERIFY_PEER);
+        } else if (verifyMode == SslVerifyMode.NONE) {
             logger.warning("{} is not secure.", verifyMode);
+            sslDomain.setPeerAuthentication(SslDomain.VerifyMode.ANONYMOUS_PEER);
         } else {
             throw logger.logExceptionAsError(new UnsupportedOperationException(
                 "verifyMode is not supported: " + verifyMode));
         }
 
-        sslDomain.setPeerAuthentication(verifyMode);
         transport.ssl(sslDomain);
     }
 

@@ -11,9 +11,10 @@ import com.azure.core.amqp.implementation.handler.ConnectionHandler;
 import com.azure.core.amqp.implementation.handler.WebSocketsConnectionHandler;
 import com.azure.core.amqp.implementation.handler.WebSocketsProxyConnectionHandler;
 import com.azure.core.amqp.models.CbsAuthorizationType;
+import com.azure.core.amqp.models.SslVerifyMode;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.util.ClientOptions;
-import org.apache.qpid.proton.engine.SslDomain;
+import com.azure.core.util.Header;
 import org.apache.qpid.proton.reactor.Reactor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -32,6 +33,7 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.stream.Stream;
 
@@ -57,8 +59,11 @@ public class ReactorHandlerProviderTest {
     private static final String PASSWORD = "test-password";
     private static final String PRODUCT = "test";
     private static final String CLIENT_VERSION = "1.0.0-test";
-    private static final SslDomain.VerifyMode VERIFY_MODE = SslDomain.VerifyMode.VERIFY_PEER;
-    private static final ClientOptions CLIENT_OPTIONS = new ClientOptions();
+    private static final SslVerifyMode VERIFY_MODE = SslVerifyMode.VERIFY_PEER;
+
+    private static final ClientOptions CLIENT_OPTIONS = new ClientOptions().setHeaders(
+        Arrays.asList(new Header("name", PRODUCT), new Header("version", CLIENT_VERSION)));
+
 
     @Mock
     private Reactor reactor;
@@ -116,13 +121,9 @@ public class ReactorHandlerProviderTest {
 
         // Act
         assertThrows(NullPointerException.class,
-            () -> provider.createConnectionHandler(null, HOSTNAME, CLIENT_VERSION, connectionOptions));
+            () -> provider.createConnectionHandler(null, connectionOptions));
         assertThrows(NullPointerException.class,
-            () -> provider.createConnectionHandler(CONNECTION_ID, null, CLIENT_VERSION, connectionOptions));
-        assertThrows(NullPointerException.class,
-            () -> provider.createConnectionHandler(CONNECTION_ID, HOSTNAME, null, connectionOptions));
-        assertThrows(NullPointerException.class,
-            () -> provider.createConnectionHandler(CONNECTION_ID, HOSTNAME, CLIENT_VERSION, null));
+            () -> provider.createConnectionHandler(CONNECTION_ID, null));
     }
 
     public static Stream<Arguments> getHostnameAndPorts() {
@@ -142,8 +143,7 @@ public class ReactorHandlerProviderTest {
             new AmqpRetryOptions(), ProxyOptions.SYSTEM_DEFAULTS, scheduler, CLIENT_OPTIONS, VERIFY_MODE, hostname,
             port);
 
-        final ConnectionHandler handler = provider.createConnectionHandler(CONNECTION_ID, PRODUCT, CLIENT_VERSION,
-            connectionOptions);
+        final ConnectionHandler handler = provider.createConnectionHandler(CONNECTION_ID, connectionOptions);
 
         // Assert
         Assertions.assertNotNull(handler);
@@ -163,8 +163,7 @@ public class ReactorHandlerProviderTest {
             new AmqpRetryOptions(), configuration, scheduler, CLIENT_OPTIONS, VERIFY_MODE);
 
         // Act
-        final ConnectionHandler handler = provider.createConnectionHandler(CONNECTION_ID, PRODUCT, CLIENT_VERSION,
-            connectionOptions);
+        final ConnectionHandler handler = provider.createConnectionHandler(CONNECTION_ID, connectionOptions);
 
         // Assert
         Assertions.assertTrue(handler instanceof WebSocketsConnectionHandler);
@@ -187,8 +186,7 @@ public class ReactorHandlerProviderTest {
             new AmqpRetryOptions(), configuration, scheduler, CLIENT_OPTIONS, VERIFY_MODE);
 
         // Act
-        final ConnectionHandler handler = provider.createConnectionHandler(CONNECTION_ID, PRODUCT, CLIENT_VERSION,
-            connectionOptions);
+        final ConnectionHandler handler = provider.createConnectionHandler(CONNECTION_ID, connectionOptions);
 
         // Assert
         Assertions.assertNotNull(handler);
@@ -235,8 +233,7 @@ public class ReactorHandlerProviderTest {
         });
 
         // Act
-        final ConnectionHandler handler = provider.createConnectionHandler(CONNECTION_ID, PRODUCT, CLIENT_VERSION,
-            connectionOptions);
+        final ConnectionHandler handler = provider.createConnectionHandler(CONNECTION_ID, connectionOptions);
 
         // Assert
         Assertions.assertNotNull(handler);
@@ -264,8 +261,7 @@ public class ReactorHandlerProviderTest {
             new AmqpRetryOptions(), configuration, scheduler, CLIENT_OPTIONS, VERIFY_MODE);
 
         // Act
-        final ConnectionHandler handler = provider.createConnectionHandler(CONNECTION_ID, PRODUCT, CLIENT_VERSION,
-            connectionOptions);
+        final ConnectionHandler handler = provider.createConnectionHandler(CONNECTION_ID, connectionOptions);
 
         // Act and Assert
         Assertions.assertEquals(PROXY_ADDRESS.getHostName(), handler.getHostname());
